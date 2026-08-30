@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Chat</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: sans-serif; }
+    .msg { margin: 6px 0; padding: 4px; border-radius: 4px; }
+    .msg-meta { font-size: 0.75em; color: #888; margin-left: 6px; }
+    .msg-action { font-size: 0.75em; color: #06c; cursor: pointer; margin-left: 6px; }
+    .msg-action.danger { color: red; }
+    .msg-quote { font-size: 0.8em; color: #666; border-left: 3px solid #ccc; padding-left: 6px; margin-bottom: 2px; }
+    .date-sep { text-align: center; color: #999; font-size: 0.8em; margin: 10px 0; }
+    #typing-indicator { font-size: 0.85em; color: #888; height: 1.2em; }
+    #reply-preview { display: none; background: #eee; padding: 4px 8px; font-size: 0.85em; border-left: 3px solid #06c; margin-bottom: 4px; }
+    #partner-status { font-size: 0.85em; color: #555; }
+    #access-log-panel { display: none; border: 1px solid #ccc; padding: 6px; font-size: 0.8em; max-height: 200px; overflow-y: auto; }
+    .copied-flash { background: #d4f5d4 !important; }
+  </style>
+</head>
+<body>
+  <div>自分のID: <span id="my-id"></span></div>
+  <div id="partner-status"></div>
+  <div id="error" style="color:red; white-space: pre-wrap;"></div>
+
+  <div id="partner-setup" style="display:none;">
+    <p>相手のUIDを入力してください</p>
+    <input id="partner-input" type="text" placeholder="相手のUID">
+    <button id="partner-submit">設定</button>
+  </div>
+
+  <div id="passphrase-setup" style="display:none;">
+    <p>暗号化用の合言葉を入力してください（相手と同じ文字列にすること）</p>
+    <input id="passphrase-input" type="password" placeholder="合言葉">
+    <button id="passphrase-submit">設定</button>
+  </div>
+
+  <button id="reset-partner">相手の設定をリセット</button>
+  <button id="bulk-delete">自分の発言を全削除</button>
+  <button id="toggle-log">アクセスログ表示</button>
+  <br><br>
+  <div id="access-log-panel"></div>
+  <input id="search-input" type="text" placeholder="メッセージ検索">
+
+  <div id="chat"></div>
+  <div id="typing-indicator"></div>
+
+  <div id="reply-preview">
+    返信先: <span id="reply-preview-text"></span>
+    <button id="reply-cancel">×</button>
+  </div>
+
+  <input id="input" type="text" placeholder="メッセージを入力">
+  <button id="send">送信</button>
+
+  <script>
+    window.onerror = function(msg, url, line) {
+      document.getElementById('error').textContent = 'エラー: ' + msg + ' (行:' + line + ')';
+    };
+    window.addEventListener('unhandledrejection', function(e) {
+      document.getElementById('error').textContent = 'Promiseエラー: ' + (e.reason?.message || e.reason);
+    });
+  </script>
+  <script src="main.js?v=10"></script>
+</body>
+</html>
