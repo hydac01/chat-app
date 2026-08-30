@@ -30,11 +30,11 @@ function formatDateTime(ts) { return formatDate(ts) + ' ' + formatTime(ts); }
 function showError(text) { document.getElementById('error').textContent = text; }
 
 // ---------- 暗号化 ----------
-async function getKeyFromPassphrase(passphrase) {
+async function getKeyFromPassphrase(passphrase, saltString) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
   return crypto.subtle.deriveKey(
-    { name: 'PBKDF2', salt: enc.encode('chat-app-fixed-salt'), iterations: 100000, hash: 'SHA-256' },
+    { name: 'PBKDF2', salt: enc.encode(saltString), iterations: 100000, hash: 'SHA-256' },
     keyMaterial,
     { name: 'AES-GCM', length: 256 },
     false,
@@ -43,7 +43,8 @@ async function getKeyFromPassphrase(passphrase) {
 }
 async function initCrypto() {
   const passphrase = localStorage.getItem('sharedPassphrase');
-  cryptoKey = await getKeyFromPassphrase(passphrase);
+  const conversationKey = [myUserId, partnerUserId].sort().join('_');
+  cryptoKey = await getKeyFromPassphrase(passphrase, conversationKey);
 }
 async function encryptText(plain) {
   const iv = crypto.getRandomValues(new Uint8Array(12));
