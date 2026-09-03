@@ -5,21 +5,46 @@
   <title>Chat</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: sans-serif; }
-    .msg { margin: 6px 0; padding: 4px; border-radius: 4px; }
-    .msg-meta { font-size: 0.75em; color: #888; margin-left: 6px; }
-    .msg-action { font-size: 0.75em; color: #06c; cursor: pointer; margin-left: 6px; }
+    html { font-size: 22px; }
+    body { font-family: sans-serif; font-size: 18px; line-height: 1.5; }
+    input, button { font-size: 1rem; padding: 6px 8px; }
+    .msg { margin: 8px 0; padding: 6px; border-radius: 4px; font-size: 1rem; }
+    .msg-meta { font-size: 0.85em; color: #888; margin-left: 6px; }
+    .msg-action { font-size: 0.85em; color: #06c; cursor: pointer; margin-left: 6px; }
     .msg-action.danger { color: red; }
-    .msg-quote { font-size: 0.8em; color: #666; border-left: 3px solid #ccc; padding-left: 6px; margin-bottom: 2px; }
-    .date-sep { text-align: center; color: #999; font-size: 0.8em; margin: 10px 0; }
-    #typing-indicator { font-size: 0.85em; color: #888; height: 1.2em; }
-    #reply-preview { display: none; background: #eee; padding: 4px 8px; font-size: 0.85em; border-left: 3px solid #06c; margin-bottom: 4px; }
-    #partner-status { font-size: 0.85em; color: #555; }
-    #access-log-panel { display: none; border: 1px solid #ccc; padding: 6px; font-size: 0.8em; max-height: 200px; overflow-y: auto; }
+    .msg-quote { font-size: 0.9em; color: #666; border-left: 3px solid #ccc; padding-left: 6px; margin-bottom: 2px; }
+    .date-sep { text-align: center; color: #999; font-size: 0.9em; margin: 10px 0; }
+    #typing-indicator { font-size: 0.9em; color: #888; height: 1.4em; }
+    #reply-preview { display: none; background: #eee; padding: 6px 10px; font-size: 0.9em; border-left: 3px solid #06c; margin-bottom: 4px; }
+    #partner-status { font-size: 0.9em; color: #555; }
+    #my-id { font-size: 1.3em; font-weight: bold; }
+    #access-log-panel { display: none; border: 1px solid #ccc; padding: 8px; font-size: 0.9em; max-height: 200px; overflow-y: auto; }
     .copied-flash { background: #d4f5d4 !important; }
   </style>
 </head>
 <body>
+  <div id="font-control" style="position:fixed; top:6px; right:6px; z-index:9999; background:#fff; border:1px solid #ccc; border-radius:8px; padding:4px 6px; display:flex; gap:6px; box-shadow:0 1px 4px rgba(0,0,0,0.15);">
+    <button onclick="changeFontSize(-2)" style="font-size:16px; padding:4px 10px;">A-</button>
+    <button onclick="changeFontSize(2)" style="font-size:16px; padding:4px 10px;">A+</button>
+  </div>
+  <script>
+    (function() {
+      var STORAGE_KEY = 'appFontSize';
+      var MIN = 14, MAX = 36;
+      function applySize(px) {
+        document.documentElement.style.fontSize = px + 'px';
+        localStorage.setItem(STORAGE_KEY, px);
+      }
+      window.changeFontSize = function(delta) {
+        var current = parseInt(localStorage.getItem(STORAGE_KEY)) || 22;
+        var next = Math.min(MAX, Math.max(MIN, current + delta));
+        applySize(next);
+      };
+      var saved = parseInt(localStorage.getItem(STORAGE_KEY));
+      if (saved) applySize(saved);
+    })();
+  </script>
+
   <div>自分のID: <span id="my-id"></span></div>
   <div id="partner-status"></div>
   <div id="error" style="color:red; white-space: pre-wrap;"></div>
