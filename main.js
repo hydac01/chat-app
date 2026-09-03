@@ -17,6 +17,7 @@ let partnerOnline = false;
 let partnerLastSeen = null;
 let cryptoKey = null;
 let logVisible = false;
+let roomWaitChannel = null;
 
 function formatTime(ts) {
   const d = new Date(ts);
@@ -67,6 +68,57 @@ async function decryptText(b64) {
   }
 }
 
+// ---------- ルーム合言葉による自動ペア接続 ----------
+async function sha256Hex(text) {
+  const enc = new TextEncoder();
+  const data = enc.encode(text);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function submitRoomPassphrase() {
+  const val = document.getElementById('room-passphrase-input').value.trim();
+  if (!val) return;
+  const statusEl = document.getElementById('room-status');
+  statusEl.textContent = '接続中...';
+
+  const roomKey = await sha256Hex('room:' + val);
+
+  const { data, error } = await sb.rpc('join_room', { p_room_key: roomKey });
+  if (error) { showError('ルーム接続エラー: ' + error.message); return; }
+
+  const result = Array.isArray(data) ? data[0] : data;
+  if (result.is_waiting) {
+    statusEl.textContent = '相手の接続を待っています...';
+    subscribeRoomWait(roomKey);
+  } else {
+    await onRoomConnected(result.partner_id);
+  }
+}
+
+function subscribeRoomWait(roomKey) {
+  roomWaitChannel = sb.channel('room-wait-' + roomKey)
+    .on('postgres_changes',
+      { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `room_key=eq.${roomKey}` },
+      async (payload) => {
+        const partnerId = payload.new.participant_2;
+        if (partnerId) {
+          sb.removeChannel(roomWaitChannel);
+          await onRoomConnected(partnerId);
+        }
+      })
+    .subscribe();
+}
+
+async function onRoomConnected(partnerId) {
+  partnerUserId = partnerId;
+  localStorage.setItem('partnerUserId', partnerUserId);
+  document.getElementById('room-setup').style.display = 'none';
+  await registerParticipantPair();
+  checkPassphrase();
+}
+
 // ---------- 認証・初期化 ----------
 async function initAuth() {
   const { data: { session } } = await sb.auth.getSession();
@@ -80,7 +132,7 @@ async function initAuth() {
   document.getElementById('my-id').textContent = myUserId;
 
   if (!partnerUserId) {
-    document.getElementById('partner-setup').style.display = 'block';
+    document.getElementById('room-setup').style.display = 'block';
   } else {
     checkPassphrase();
   }
@@ -95,6 +147,8 @@ async function registerParticipantPair() {
   }, { onConflict: 'conversation_key' });
   if (error) showError('参加者登録エラー: ' + error.message);
 }
+
+document.getElementById('room-passphrase-submit').addEventListener('click', submitRoomPassphrase);
 
 document.getElementById('partner-submit').addEventListener('click', async () => {
   const val = document.getElementById('partner-input').value.trim();
@@ -353,10 +407,9 @@ async function renderAll() {
   const chat = document.getElementById('chat');
 
   const list = searchTerm
-    ? allMessages.filter(m => true) // 検索は復号後に別途フィルタ
+    ? allMessages.filter(m => true)
     : allMessages;
 
-  // 全メッセージを復号
   const decrypted = await Promise.all(list.map(async m => ({
     ...m,
     _plain: await decryptText(m.content),
@@ -450,7 +503,7 @@ function buildMessageElement(msg) {
 checkInviteCode();
 
 // ===== 招待コード認証 =====
-const INVITE_CODE = "0903"; // 例: "sakura2026"
+const INVITE_CODE = "0903";
 
 function checkInviteCode() {
     const stored = localStorage.getItem('inviteVerified');

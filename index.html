@@ -57,6 +57,13 @@
   <div id="partner-status"></div>
   <div id="error" style="color:red; white-space: pre-wrap;"></div>
 
+  <div id="room-setup" style="display:none;">
+    <p>ルームの合言葉を入力してください（相手と事前に決めた文字列）</p>
+    <input id="room-passphrase-input" type="text" placeholder="ルーム合言葉">
+    <button id="room-passphrase-submit">接続</button>
+    <p id="room-status"></p>
+  </div>
+
   <div id="partner-setup" style="display:none;">
     <p>相手のUIDを入力してください</p>
     <input id="partner-input" type="text" placeholder="相手のUID">
@@ -95,7 +102,7 @@
       document.getElementById('error').textContent = 'Promiseエラー: ' + (e.reason?.message || e.reason);
     });
   </script>
-  <script src="main.js?v=15"></script>
+  <script src="main.js?v=17"></script>
 </div>
 </body>
 </html>
