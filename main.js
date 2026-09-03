@@ -42,7 +42,7 @@ async function getKeyFromPassphrase(passphrase, saltString) {
   );
 }
 async function initCrypto() {
-  const passphrase = localStorage.getItem('sharedPassphrase');
+  const passphrase = sessionStorage.getItem('sharedPassphrase');
   const conversationKey = [myUserId, partnerUserId].sort().join('_');
   cryptoKey = await getKeyFromPassphrase(passphrase, conversationKey);
 }
@@ -107,7 +107,7 @@ document.getElementById('partner-submit').addEventListener('click', async () => 
 });
 
 function checkPassphrase() {
-  if (!localStorage.getItem('sharedPassphrase')) {
+  if (!sessionStorage.getItem('sharedPassphrase')) {
     document.getElementById('passphrase-setup').style.display = 'block';
   } else {
     startChat();
@@ -116,14 +116,14 @@ function checkPassphrase() {
 document.getElementById('passphrase-submit').addEventListener('click', () => {
   const val = document.getElementById('passphrase-input').value;
   if (!val) return;
-  localStorage.setItem('sharedPassphrase', val);
+  sessionStorage.setItem('sharedPassphrase', val);
   document.getElementById('passphrase-setup').style.display = 'none';
   startChat();
 });
 
 document.getElementById('reset-partner').addEventListener('click', () => {
   localStorage.removeItem('partnerUserId');
-  localStorage.removeItem('sharedPassphrase');
+  sessionStorage.removeItem('sharedPassphrase');
   location.reload();
 });
 
@@ -447,4 +447,33 @@ function buildMessageElement(msg) {
   return div;
 }
 
-initAuth();
+checkInviteCode();
+
+// ===== 招待コード認証 =====
+const INVITE_CODE = "0903"; // 例: "sakura2026"
+
+function checkInviteCode() {
+    const stored = localStorage.getItem('inviteVerified');
+    if (stored === 'true') {
+        document.getElementById('app-container').style.display = 'block';
+        startApp();
+        return;
+    }
+    document.getElementById('invite-setup').style.display = 'block';
+}
+
+function submitInviteCode() {
+    const input = document.getElementById('invite-code-input').value.trim();
+    if (input === INVITE_CODE) {
+        localStorage.setItem('inviteVerified', 'true');
+        document.getElementById('invite-setup').style.display = 'none';
+        document.getElementById('app-container').style.display = 'block';
+        startApp();
+    } else {
+        document.getElementById('invite-error').textContent = 'コードが違います';
+    }
+}
+
+function startApp() {
+    initAuth();
+}
