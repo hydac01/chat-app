@@ -236,9 +236,9 @@ async function loadPartnerLastSeen() {
 function updateOnlineStatusUI() {
   const el = document.getElementById('partner-status');
   if (partnerOnline) {
-    el.textContent = '相手: オンライン';
+    el.textContent = '端末B: オンライン';
   } else {
-    el.textContent = partnerLastSeen ? '相手: 最終ログイン ' + formatDateTime(partnerLastSeen) : '相手: 未ログイン';
+    el.textContent = partnerLastSeen ? '端末B: 最終同期 ' + formatDateTime(partnerLastSeen) : '端末B: 未同期';
   }
 }
 function subscribePresence() {
@@ -272,7 +272,7 @@ async function loadAccessLogs() {
   panel.innerHTML = '';
   data.forEach(log => {
     const line = document.createElement('div');
-    const who = log.user_id === myUserId ? '自分' : '相手';
+    const who = log.user_id === myUserId ? '端末A' : '端末B';
     line.textContent = formatDateTime(log.created_at) + ' - ' + who + ' - ' + log.event_type;
     panel.appendChild(line);
   });
@@ -333,7 +333,7 @@ function subscribeTyping() {
 }
 function showTypingIndicator() {
   const el = document.getElementById('typing-indicator');
-  el.textContent = '相手が入力中...';
+  el.textContent = '他の端末で編集中...';
   clearTimeout(typingTimeout);
   typingTimeout = setTimeout(() => { el.textContent = ''; }, 3000);
 }
@@ -467,7 +467,7 @@ async function renderAll() {
 function buildMessageElement(msg) {
   const isMine = msg.sender_id === myUserId;
   const div = document.createElement('div');
-  div.className = 'msg';
+  div.className = 'msg' + (isMine ? ' mine' : '');
   div.id = 'msg-' + msg.id;
 
   if (msg._replyPlain) {
@@ -494,7 +494,7 @@ function buildMessageElement(msg) {
   }
 
   const textSpan = document.createElement('span');
-  textSpan.textContent = (isMine ? '自分: ' : '相手: ') + msg._plain;
+  textSpan.textContent = msg._plain;
   div.appendChild(textSpan);
   attachLongPress(textSpan, msg._plain);
 
