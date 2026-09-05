@@ -3,7 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>動画メモ一覧 | TubeMemo</title>
+  <title>マイメモ | 端末同期ノート</title>
+  <meta name="robots" content="noindex, nofollow">
+  <meta property="og:title" content="マイメモ">
+  <meta property="og:description" content="個人用メモを複数端末で同期するためのページです">
+  <meta property="og:type" content="website">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22><rect width=%2224%22 height=%2224%22 rx=%225%22 fill=%22%23e02020%22/><polygon points=%229,7 18,12 9,17%22 fill=%22white%22/></svg>">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
@@ -72,11 +76,11 @@
 </head>
 <body>
 
-<div class="site-header"><span class="logo"></span><b>TubeMemo</b></div>
+<div class="site-header"><span class="logo"></span><b>マイメモ</b></div>
 
 <div id="invite-setup" style="display:none;">
-  <h3>🔒 限定公開ページです</h3>
-  <p style="color:var(--sub); font-size:.85rem;">閲覧パスワードを入力してください</p>
+  <h3>🔒 非公開メモです</h3>
+  <p style="color:var(--sub); font-size:.85rem;">このメモ帳を開くための端末パスワードを入力してください</p>
   <input type="text" id="invite-code-input" placeholder="パスワード">
   <button onclick="submitInviteCode()">送信</button>
   <p id="invite-error" style="color:#e02020; font-size:.85rem;"></p>
@@ -160,15 +164,15 @@
   <div id="partner-status"></div>
   <div id="error"></div>
 
-  <div class="section-title">💬 コメント</div>
+  <div class="section-title">📝 メモ</div>
   <div style="font-size:.7rem; color:var(--sub); padding:0 14px 6px;">投稿者ID: <span id="my-id"></span></div>
 
   <div id="room-setup" style="display:none;">
-    <p>コメント欄参加用の合言葉を入力してください（相手と事前に決めた文字列）</p>
-    <input id="room-passphrase-input" type="text" placeholder="合言葉">
+    <p>このメモを他の端末でも見るための同期キーを入力してください（自分の全端末で共通の文字列）</p>
+    <input id="room-passphrase-input" type="text" placeholder="同期キー">
     <button id="room-passphrase-submit">参加</button>
     <p id="room-status" style="font-size:.85rem; color:var(--sub);"></p>
-    <button id="room-reset-btn" style="display:none; color:var(--accent);">参加をリセットして再試行</button>
+    <button id="room-reset-btn" style="display:none; color:var(--accent);">同期をリセットして再試行</button>
   </div>
 
   <div id="partner-setup" style="display:none;">
@@ -178,18 +182,18 @@
   </div>
 
   <div id="passphrase-setup" style="display:none;">
-    <p>コメント閲覧キーワードを入力してください（相手と同じ文字列にすること）</p>
-    <input id="passphrase-input" type="password" placeholder="キーワード">
+    <p>メモの暗号化キーを入力してください（自分の全端末で共通の文字列にすること）</p>
+    <input id="passphrase-input" type="password" placeholder="暗号化キー">
     <button id="passphrase-submit">設定</button>
   </div>
 
   <div class="toolbar">
-    <button id="reset-partner">参加設定をリセット</button>
-    <button id="bulk-delete">自分のコメントを全削除</button>
-    <button id="toggle-log">閲覧履歴を表示</button>
+    <button id="reset-partner">同期設定をリセット</button>
+    <button id="bulk-delete">自分のメモを全削除</button>
+    <button id="toggle-log">同期履歴を表示</button>
   </div>
   <div id="access-log-panel"></div>
-  <input id="search-input" type="text" placeholder="コメントを検索">
+  <input id="search-input" type="text" placeholder="メモを検索">
 
   <div id="chat"></div>
   <div id="typing-indicator"></div>
@@ -200,7 +204,7 @@
   </div>
 
   <div class="composer">
-    <input id="input" type="text" placeholder="コメントを追加...">
+    <input id="input" type="text" placeholder="メモを追加...">
     <button id="send">送信</button>
   </div>
 
