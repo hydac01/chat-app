@@ -30,7 +30,7 @@ function formatDate(ts) {
 function formatDateTime(ts) { return formatDate(ts) + ' ' + formatTime(ts); }
 function showError(text) { document.getElementById('error').textContent = text; }
 
-// ---------- 暗号化 ----------
+// ---------- データ処理 ----------
 async function getKeyFromPassphrase(passphrase, saltString) {
   const enc = new TextEncoder();
   const keyMaterial = await crypto.subtle.importKey('raw', enc.encode(passphrase), 'PBKDF2', false, ['deriveKey']);
@@ -68,7 +68,7 @@ async function decryptText(b64) {
   }
 }
 
-// ---------- ルーム合言葉による自動ペア接続 ----------
+// ---------- 端末リンク処理 ----------
 async function sha256Hex(text) {
   const enc = new TextEncoder();
   const data = enc.encode(text);
@@ -90,13 +90,13 @@ async function submitRoomPassphrase() {
   const roomKey = await sha256Hex('room:' + val);
   lastRoomKey = roomKey;
 
-  const { data, error } = await sb.rpc('join_room', { p_room_key: roomKey });
+  const { data, error } = await sb.rpc('join_group', { p_room_key: roomKey });
   if (error) {
     if (error.message.includes('room_full')) {
       statusEl.textContent = 'このルームは既に満室です（テスト等で誤って埋まった可能性があります）';
       resetBtn.style.display = 'inline-block';
     } else {
-      showError('ルーム接続エラー: ' + error.message);
+      showError('同期エラー: ' + error.message);
     }
     return;
   }
@@ -116,7 +116,7 @@ document.getElementById('room-reset-btn').addEventListener('click', async () => 
   if (!lastRoomKey) return;
   statusEl.textContent = 'リセット中...';
 
-  const { error } = await sb.rpc('reset_room', { p_room_key: lastRoomKey });
+  const { error } = await sb.rpc('reset_group', { p_room_key: lastRoomKey });
   if (error) {
     statusEl.textContent = 'リセット失敗（このルームの参加者ではない可能性があります）: ' + error.message;
     return;
@@ -129,7 +129,7 @@ document.getElementById('room-reset-btn').addEventListener('click', async () => 
 function subscribeRoomWait(roomKey) {
   roomWaitChannel = sb.channel('room-wait-' + roomKey)
     .on('postgres_changes',
-      { event: 'UPDATE', schema: 'public', table: 'rooms', filter: `room_key=eq.${roomKey}` },
+      { event: 'UPDATE', schema: 'public', table: 'groups', filter: `room_key=eq.${roomKey}` },
       async (payload) => {
         const partnerId = payload.new.participant_2;
         if (partnerId) {
@@ -148,7 +148,7 @@ async function onRoomConnected(partnerId) {
   checkPassphrase();
 }
 
-// ---------- 認証・初期化 ----------
+// ---------- 初期化 ----------
 async function initAuth() {
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
@@ -169,12 +169,12 @@ async function initAuth() {
 
 async function registerParticipantPair() {
   const key = [myUserId, partnerUserId].sort().join('_');
-  const { error } = await sb.from('allowed_participants').upsert({
+  const { error } = await sb.from('links').upsert({
     conversation_key: key,
     user_id_1: myUserId,
     user_id_2: partnerUserId
   }, { onConflict: 'conversation_key' });
-  if (error) showError('参加者登録エラー: ' + error.message);
+  if (error) showError('リンク登録エラー: ' + error.message);
 }
 
 document.getElementById('room-passphrase-submit').addEventListener('click', submitRoomPassphrase);
@@ -224,12 +224,12 @@ async function startChat() {
   setInterval(updateMyStatus, 20000);
 }
 
-// ---------- オンライン状態 / 最終ログイン ----------
+// ---------- 同期状態 ----------
 async function updateMyStatus() {
-  await sb.from('user_status').upsert({ user_id: myUserId, last_seen: new Date().toISOString() });
+  await sb.from('device_status').upsert({ user_id: myUserId, last_seen: new Date().toISOString() });
 }
 async function loadPartnerLastSeen() {
-  const { data } = await sb.from('user_status').select('last_seen').eq('user_id', partnerUserId).maybeSingle();
+  const { data } = await sb.from('device_status').select('last_seen').eq('user_id', partnerUserId).maybeSingle();
   if (data) partnerLastSeen = data.last_seen;
   updateOnlineStatusUI();
 }
@@ -258,12 +258,12 @@ function subscribePresence() {
     });
 }
 
-// ---------- アクセスログ ----------
+// ---------- 履歴 ----------
 async function logAccess() {
-  await sb.from('access_logs').insert({ user_id: myUserId, event_type: 'login' });
+  await sb.from('sync_logs').insert({ user_id: myUserId, event_type: 'login' });
 }
 async function loadAccessLogs() {
-  const { data, error } = await sb.from('access_logs')
+  const { data, error } = await sb.from('sync_logs')
     .select('*').in('user_id', [myUserId, partnerUserId])
     .order('created_at', { ascending: false })
     .limit(50);
@@ -284,10 +284,10 @@ document.getElementById('toggle-log').addEventListener('click', async () => {
   if (logVisible) await loadAccessLogs();
 });
 
-// ---------- メッセージ読み込み/購読 ----------
+// ---------- データ読み込み/購読 ----------
 async function loadMessages() {
   const { data, error } = await sb
-    .from('messages')
+    .from('items')
     .select('*')
     .or(`and(sender_id.eq.${myUserId},receiver_id.eq.${partnerUserId}),and(sender_id.eq.${partnerUserId},receiver_id.eq.${myUserId})`)
     .order('created_at', { ascending: true });
@@ -303,22 +303,22 @@ function isRelevant(msg) {
 }
 
 function subscribeMessages() {
-  sb.channel('messages-realtime')
-    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+  sb.channel('items-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'items' }, (payload) => {
       const msg = payload.new;
       if (!isRelevant(msg)) return;
       allMessages.push(msg);
       renderAll();
       if (msg.sender_id === partnerUserId) markIncomingAsRead();
     })
-    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'items' }, (payload) => {
       const msg = payload.new;
       if (!isRelevant(msg)) return;
       const idx = allMessages.findIndex(m => m.id === msg.id);
       if (idx !== -1) allMessages[idx] = msg;
       renderAll();
     })
-    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) => {
+    .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'items' }, (payload) => {
       allMessages = allMessages.filter(m => m.id !== payload.old.id);
       renderAll();
     })
@@ -343,13 +343,13 @@ function broadcastTyping() {
 }
 
 async function markIncomingAsRead() {
-  await sb.from('messages').update({ read_at: new Date().toISOString() })
+  await sb.from('items').update({ read_at: new Date().toISOString() })
     .eq('receiver_id', myUserId).eq('sender_id', partnerUserId)
     .is('read_at', null);
 }
 
 async function deleteMessage(id) {
-  const { data, error } = await sb.from('messages').delete().eq('id', id).select();
+  const { data, error } = await sb.from('items').delete().eq('id', id).select();
   if (error) { showError('削除エラー: ' + error.message); return; }
   if (!data || data.length === 0) { showError('削除エラー: 権限がないか対象が見つかりません'); return; }
   allMessages = allMessages.filter(m => m.id !== id);
@@ -358,7 +358,7 @@ async function deleteMessage(id) {
 
 async function bulkDeleteOwn() {
   if (!confirm('自分の発言をすべて削除しますか？')) return;
-  const { error } = await sb.from('messages').delete()
+  const { error } = await sb.from('items').delete()
     .eq('sender_id', myUserId).eq('receiver_id', partnerUserId);
   if (error) { showError('全削除エラー: ' + error.message); return; }
   allMessages = allMessages.filter(m => m.sender_id !== myUserId);
@@ -372,7 +372,7 @@ function cancelEdit() { editingId = null; renderAll(); }
 async function saveEdit(id, newPlainContent) {
   if (!newPlainContent.trim()) return;
   const encrypted = await encryptText(newPlainContent.trim());
-  const { error } = await sb.from('messages').update({
+  const { error } = await sb.from('items').update({
     content: encrypted, edited_at: new Date().toISOString()
   }).eq('id', id);
   if (error) { showError('編集エラー: ' + error.message); return; }
@@ -401,7 +401,7 @@ async function sendMessage() {
     payload.reply_to_content = await encryptText(replyTarget.content.slice(0, 60));
   }
 
-  const { error } = await sb.from('messages').insert(payload);
+  const { error } = await sb.from('items').insert(payload);
   if (error) { showError('送信エラー: ' + error.message); return; }
   input.value = '';
   replyTarget = null;
@@ -431,7 +431,7 @@ function attachLongPress(el, plainText) {
   el.addEventListener('pointerleave', cancel);
 }
 
-// ---------- 描画（非同期: 復号を待つ） ----------
+// ---------- 描画 ----------
 async function renderAll() {
   const chat = document.getElementById('chat');
 
@@ -531,7 +531,7 @@ function buildMessageElement(msg) {
 
 checkInviteCode();
 
-// ===== 招待コード認証 =====
+// ===== アクセス確認 =====
 const INVITE_CODE = "0903";
 
 function checkInviteCode() {
