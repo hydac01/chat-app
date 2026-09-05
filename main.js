@@ -77,16 +77,29 @@ async function sha256Hex(text) {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+let lastRoomKey = null;
+
 async function submitRoomPassphrase() {
   const val = document.getElementById('room-passphrase-input').value.trim();
   if (!val) return;
   const statusEl = document.getElementById('room-status');
+  const resetBtn = document.getElementById('room-reset-btn');
+  resetBtn.style.display = 'none';
   statusEl.textContent = '接続中...';
 
   const roomKey = await sha256Hex('room:' + val);
+  lastRoomKey = roomKey;
 
   const { data, error } = await sb.rpc('join_room', { p_room_key: roomKey });
-  if (error) { showError('ルーム接続エラー: ' + error.message); return; }
+  if (error) {
+    if (error.message.includes('room_full')) {
+      statusEl.textContent = 'このルームは既に満室です（テスト等で誤って埋まった可能性があります）';
+      resetBtn.style.display = 'inline-block';
+    } else {
+      showError('ルーム接続エラー: ' + error.message);
+    }
+    return;
+  }
 
   const result = Array.isArray(data) ? data[0] : data;
   if (result.is_waiting) {
@@ -96,6 +109,22 @@ async function submitRoomPassphrase() {
     await onRoomConnected(result.partner_id);
   }
 }
+
+document.getElementById('room-reset-btn').addEventListener('click', async () => {
+  const statusEl = document.getElementById('room-status');
+  const resetBtn = document.getElementById('room-reset-btn');
+  if (!lastRoomKey) return;
+  statusEl.textContent = 'リセット中...';
+
+  const { error } = await sb.rpc('reset_room', { p_room_key: lastRoomKey });
+  if (error) {
+    statusEl.textContent = 'リセット失敗（このルームの参加者ではない可能性があります）: ' + error.message;
+    return;
+  }
+
+  resetBtn.style.display = 'none';
+  statusEl.textContent = 'リセット完了。もう一度「接続」を押してください。';
+});
 
 function subscribeRoomWait(roomKey) {
   roomWaitChannel = sb.channel('room-wait-' + roomKey)

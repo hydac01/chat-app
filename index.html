@@ -62,6 +62,7 @@
     <input id="room-passphrase-input" type="text" placeholder="ルーム合言葉">
     <button id="room-passphrase-submit">接続</button>
     <p id="room-status"></p>
+    <button id="room-reset-btn" style="display:none; color:red;">このルームをリセットして再接続</button>
   </div>
 
   <div id="partner-setup" style="display:none;">
@@ -102,7 +103,7 @@
       document.getElementById('error').textContent = 'Promiseエラー: ' + (e.reason?.message || e.reason);
     });
   </script>
-  <script src="main.js?v=17"></script>
+  <script src="main.js?v=18"></script>
 </div>
 </body>
 </html>
